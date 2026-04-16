@@ -50,8 +50,12 @@ function ResultsPage() {
 
     if (candRes.data) {
       setCandidatesWithVotes(
-        (candRes.data as CandidateWithVotes[]).map((c) => ({
-          ...c,
+        candRes.data.map((c) => ({
+          id: c.id,
+          category_id: c.category_id,
+          full_name: c.full_name,
+          department: c.department,
+          photo_url: c.photo_url,
           vote_count: voteCounts[c.id] || 0,
         }))
       );
