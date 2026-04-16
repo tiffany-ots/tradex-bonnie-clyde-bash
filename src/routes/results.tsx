@@ -23,6 +23,7 @@ interface CandidateWithVotes {
   category_id: string;
   full_name: string;
   department: string | null;
+  photo_url: string | null;
   vote_count: number;
 }
 
@@ -40,7 +41,6 @@ function ResultsPage() {
 
     if (catRes.data) setCategories(catRes.data);
 
-    // Count votes per candidate
     const voteCounts: Record<string, number> = {};
     if (votesRes.data) {
       for (const v of votesRes.data) {
@@ -50,7 +50,7 @@ function ResultsPage() {
 
     if (candRes.data) {
       setCandidatesWithVotes(
-        candRes.data.map((c) => ({
+        (candRes.data as CandidateWithVotes[]).map((c) => ({
           ...c,
           vote_count: voteCounts[c.id] || 0,
         }))
@@ -61,7 +61,6 @@ function ResultsPage() {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 10s
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -89,7 +88,6 @@ function ResultsPage() {
               .sort((a, b) => b.vote_count - a.vote_count);
             
             if (catCandidates.length === 0) return null;
-
             const maxVotes = catCandidates[0]?.vote_count || 1;
 
             return (
@@ -109,15 +107,19 @@ function ResultsPage() {
                       <div key={cand.id} className="px-5 py-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div
-                              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                                isLeader
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {idx + 1}
-                            </div>
+                            {cand.photo_url ? (
+                              <img src={cand.photo_url} alt={cand.full_name} className="h-8 w-8 rounded-full object-cover" />
+                            ) : (
+                              <div
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                                  isLeader
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted text-muted-foreground"
+                                }`}
+                              >
+                                {idx + 1}
+                              </div>
+                            )}
                             <div>
                               <p className="text-sm font-semibold text-card-foreground">
                                 {cand.full_name}
@@ -132,7 +134,6 @@ function ResultsPage() {
                             {cand.vote_count} vote{cand.vote_count !== 1 ? "s" : ""}
                           </span>
                         </div>
-                        {/* Progress bar */}
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                           <div
                             className="h-full rounded-full bg-primary transition-all duration-500"

@@ -12,6 +12,8 @@ export const Route = createFileRoute("/categories")({
   }),
 });
 
+const ADMIN_PASSWORD = "Tradex2026";
+
 interface Category {
   id: string;
   name: string;
@@ -24,6 +26,8 @@ interface Candidate {
   category_id: string;
   full_name: string;
   department: string | null;
+  photo_url: string | null;
+  description: string | null;
 }
 
 function CategoriesPage() {
@@ -31,15 +35,16 @@ function CategoriesPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Admin
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+
   // New category form
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [catName, setCatName] = useState("");
   const [catDesc, setCatDesc] = useState("");
-
-  // New candidate form
-  const [activeCandidateForm, setActiveCandidateForm] = useState<string | null>(null);
-  const [candName, setCandName] = useState("");
-  const [candDept, setCandDept] = useState("");
 
   const fetchData = async () => {
     setLoading(true);
@@ -47,14 +52,34 @@ function CategoriesPage() {
       supabase.from("categories").select("*").order("created_at", { ascending: false }),
       supabase.from("candidates").select("*"),
     ]);
-    if (catRes.data) setCategories(catRes.data);
-    if (candRes.data) setCandidates(candRes.data);
+    if (catRes.data) setCategories(catRes.data as Category[]);
+    if (candRes.data) setCandidates(candRes.data as Candidate[]);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
+    // Check session admin
+    const stored = sessionStorage.getItem("tradex_admin");
+    if (stored === "true") setIsAdmin(true);
   }, []);
+
+  const handleAdminLogin = () => {
+    if (password === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      sessionStorage.setItem("tradex_admin", "true");
+      setShowPasswordPrompt(false);
+      setPassword("");
+      setPasswordError(false);
+    } else {
+      setPasswordError(true);
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    sessionStorage.removeItem("tradex_admin");
+  };
 
   const addCategory = async () => {
     if (!catName.trim()) return;
@@ -67,19 +92,6 @@ function CategoriesPage() {
 
   const deleteCategory = async (id: string) => {
     await supabase.from("categories").delete().eq("id", id);
-    fetchData();
-  };
-
-  const addCandidate = async (categoryId: string) => {
-    if (!candName.trim()) return;
-    await supabase.from("candidates").insert({
-      category_id: categoryId,
-      full_name: candName.trim(),
-      department: candDept.trim() || null,
-    });
-    setCandName("");
-    setCandDept("");
-    setActiveCandidateForm(null);
     fetchData();
   };
 
@@ -96,19 +108,70 @@ function CategoriesPage() {
             Catégories de vote
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Créez des catégories et inscrivez des candidats
+            {isAdmin ? "Mode administrateur — gestion des catégories" : "Consultez les catégories et inscrivez-vous"}
           </p>
         </div>
-        <button
-          onClick={() => setShowCategoryForm(!showCategoryForm)}
-          className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          {showCategoryForm ? "Annuler" : "+ Nouvelle catégorie"}
-        </button>
+        <div className="flex gap-2">
+          {isAdmin ? (
+            <>
+              <button
+                onClick={() => setShowCategoryForm(!showCategoryForm)}
+                className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                {showCategoryForm ? "Annuler" : "+ Nouvelle catégorie"}
+              </button>
+              <button
+                onClick={handleAdminLogout}
+                className="rounded-md border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+              >
+                Déconnexion
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowPasswordPrompt(true)}
+              className="rounded-md border border-border px-5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+            >
+              🔒 Admin
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* New category form */}
-      {showCategoryForm && (
+      {/* Admin password prompt */}
+      {showPasswordPrompt && !isAdmin && (
+        <div className="mt-6 rounded-xl border border-border bg-card p-5">
+          <h3 className="font-heading text-lg font-bold text-card-foreground">Accès administrateur</h3>
+          <div className="mt-4 flex gap-2">
+            <input
+              type="password"
+              placeholder="Mot de passe"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setPasswordError(false); }}
+              onKeyDown={(e) => e.key === "Enter" && handleAdminLogin()}
+              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <button
+              onClick={handleAdminLogin}
+              className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              Entrer
+            </button>
+            <button
+              onClick={() => { setShowPasswordPrompt(false); setPassword(""); setPasswordError(false); }}
+              className="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
+            >
+              Annuler
+            </button>
+          </div>
+          {passwordError && (
+            <p className="mt-2 text-sm text-destructive">Mot de passe incorrect</p>
+          )}
+        </div>
+      )}
+
+      {/* New category form (admin only) */}
+      {showCategoryForm && isAdmin && (
         <div className="mt-6 rounded-xl border border-border bg-card p-5">
           <h3 className="font-heading text-lg font-bold text-card-foreground">Nouvelle catégorie</h3>
           <div className="mt-4 space-y-3">
@@ -142,7 +205,6 @@ function CategoriesPage() {
       ) : categories.length === 0 ? (
         <div className="mt-12 rounded-xl border border-dashed border-border bg-muted/30 p-12 text-center">
           <p className="text-muted-foreground">Aucune catégorie pour le moment.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Créez la première catégorie de vote !</p>
         </div>
       ) : (
         <div className="mt-8 space-y-6">
@@ -160,71 +222,44 @@ function CategoriesPage() {
                       {catCandidates.length} candidat{catCandidates.length !== 1 ? "s" : ""}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setActiveCandidateForm(activeCandidateForm === cat.id ? null : cat.id);
-                        setCandName("");
-                        setCandDept("");
-                      }}
-                      className="rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground transition-colors hover:bg-accent/80"
-                    >
-                      + Candidat
-                    </button>
+                  {isAdmin && (
                     <button
                       onClick={() => deleteCategory(cat.id)}
                       className="rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
                     >
                       Supprimer
                     </button>
-                  </div>
+                  )}
                 </div>
-
-                {/* Add candidate form */}
-                {activeCandidateForm === cat.id && (
-                  <div className="border-b border-border bg-muted/30 p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <input
-                        type="text"
-                        placeholder="Nom complet"
-                        value={candName}
-                        onChange={(e) => setCandName(e.target.value)}
-                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Département (optionnel)"
-                        value={candDept}
-                        onChange={(e) => setCandDept(e.target.value)}
-                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <button
-                        onClick={() => addCandidate(cat.id)}
-                        className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                      >
-                        Ajouter
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {/* Candidates list */}
                 {catCandidates.length > 0 && (
                   <div className="divide-y divide-border">
                     {catCandidates.map((cand) => (
                       <div key={cand.id} className="flex items-center justify-between px-5 py-3">
-                        <div>
-                          <p className="text-sm font-medium text-card-foreground">{cand.full_name}</p>
-                          {cand.department && (
-                            <p className="text-xs text-muted-foreground">{cand.department}</p>
+                        <div className="flex items-center gap-3">
+                          {cand.photo_url ? (
+                            <img src={cand.photo_url} alt={cand.full_name} className="h-10 w-10 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-heading text-sm font-bold text-primary">
+                              {cand.full_name.charAt(0).toUpperCase()}
+                            </div>
                           )}
+                          <div>
+                            <p className="text-sm font-medium text-card-foreground">{cand.full_name}</p>
+                            {cand.department && (
+                              <p className="text-xs text-muted-foreground">{cand.department}</p>
+                            )}
+                          </div>
                         </div>
-                        <button
-                          onClick={() => deleteCandidate(cand.id)}
-                          className="text-xs text-destructive hover:underline"
-                        >
-                          Retirer
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => deleteCandidate(cand.id)}
+                            className="text-xs text-destructive hover:underline"
+                          >
+                            Retirer
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

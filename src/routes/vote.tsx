@@ -23,6 +23,8 @@ interface Candidate {
   category_id: string;
   full_name: string;
   department: string | null;
+  photo_url: string | null;
+  description: string | null;
 }
 
 function VotePage() {
@@ -41,7 +43,7 @@ function VotePage() {
         supabase.from("candidates").select("*"),
       ]);
       if (catRes.data) setCategories(catRes.data);
-      if (candRes.data) setCandidates(candRes.data);
+      if (candRes.data) setCandidates(candRes.data as Candidate[]);
       setLoading(false);
     };
     fetchData();
@@ -82,7 +84,6 @@ function VotePage() {
         Entrez votre nom puis votez pour vos collègues préférés
       </p>
 
-      {/* Voter name input */}
       <div className="mt-6 rounded-xl border border-border bg-card p-4">
         <label className="text-sm font-medium text-card-foreground">Votre nom</label>
         <input
@@ -130,19 +131,24 @@ function VotePage() {
                       <div
                         key={cand.id}
                         className={`card-hover rounded-xl border p-4 text-center transition-colors ${
-                          hasVoted
-                            ? "border-primary bg-accent"
-                            : "border-border bg-card"
+                          hasVoted ? "border-primary bg-accent" : "border-border bg-card"
                         }`}
                       >
-                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 font-heading text-xl font-bold text-primary">
-                          {cand.full_name.charAt(0).toUpperCase()}
-                        </div>
+                        {cand.photo_url ? (
+                          <img src={cand.photo_url} alt={cand.full_name} className="mx-auto h-16 w-16 rounded-full object-cover" />
+                        ) : (
+                          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 font-heading text-xl font-bold text-primary">
+                            {cand.full_name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <p className="mt-3 text-sm font-semibold text-card-foreground">
                           {cand.full_name}
                         </p>
                         {cand.department && (
                           <p className="text-xs text-muted-foreground">{cand.department}</p>
+                        )}
+                        {cand.description && (
+                          <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cand.description}</p>
                         )}
                         <button
                           onClick={() => vote(cand.id)}
