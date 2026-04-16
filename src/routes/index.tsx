@@ -66,13 +66,13 @@ function Index() {
           {[
             {
               step: "01",
-              title: "Créer une catégorie",
-              desc: "Proposez des catégories de vote comme « Meilleur employé », « Le plus stylé », etc.",
+              title: "Découvrir les catégories",
+              desc: "Consultez les catégories de vote créées par l'administrateur.",
             },
             {
               step: "02",
               title: "S'inscrire",
-              desc: "Inscrivez-vous ou inscrivez un collègue dans les catégories de votre choix.",
+              desc: "Inscrivez-vous avec votre photo dans la catégorie de votre choix.",
             },
             {
               step: "03",
