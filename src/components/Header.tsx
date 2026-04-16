@@ -7,6 +7,7 @@ const navLinks = [
   { to: "/register", label: "S'inscrire" },
   { to: "/vote", label: "Voter" },
   { to: "/results", label: "Résultats" },
+  { to: "/admin", label: "Admin" },
 ] as const;
 
 export function Header() {
